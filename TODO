@@ -1,0 +1,23 @@
+TODO
+
+  Set Pi to have static IP during development so I can test on PC
+  . or hope that I get the same IP (.134) for now and deal with this when I don't.
+  Add code to change to librespot device
+  Start/stop playback at certain time (single time for now!)
+  Fix VNC - browswer output doesn't work
+  Overall design of interface
+       
+  Need to have "refresh token" code execute if auth to spotify doesn't work
+  Set up git
+
+
+
+
+FEATURES
+  Button(s) to choose assembly or regular schedule
+  
+
+
+MAYBE
+  Some kind of indicator that shows it's connected to spotify?
+  
