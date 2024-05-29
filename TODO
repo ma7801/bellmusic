@@ -4,12 +4,13 @@ TODO
   . or hope that I get the same IP (.134) for now and deal with this when I don't.
   Add code to change to librespot device
   Start/stop playback at certain time (single time for now!)
-  Fix VNC - browswer output doesn't work
   Overall design of interface
        
   Need to have "refresh token" code execute if auth to spotify doesn't work
-  Set up git
-
+  Don't forget to keep committing to git!
+  Figure out a way to get Librespot device to show up in device list automatically; otherwise
+   I'd have to stream from my phone every time to get it to show up in device
+   list
 
 
 

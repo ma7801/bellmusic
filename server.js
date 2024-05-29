@@ -15,14 +15,14 @@ const redirect_uri = process.env.REDIRECT_URI;
 const authEndpoint = 'https://accounts.spotify.com/authorize';
 const tokenEndpoint = 'https://accounts.spotify.com/api/token';
 const mainPage = 'pages/bellmusic';
-const piDevice = 'Librespot';
+const piDeviceName = 'Librespot';
+var piDeviceId = null;
 
 const scopes = [
   'user-read-private',
   'user-read-email',
   'user-read-playback-state',
   'user-modify-playback-state'
-  // Add other scopes as needed
 ];
 
 const mThruF = [new schedule.Range(1,5)];
@@ -47,15 +47,18 @@ var data = {
   };
 
 
-app.get('/bellmusic', (req, res) => {
-  res.render(mainPage, data);
+// Create http server
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`);
 });
 
-// Redirect to Spotify's authorization URL
-app.get('/login', (req, res) => {
+
+// Authorize Spotify
+function authorize(res) {
   const authUrl = `${authEndpoint}?client_id=${client_id}&redirect_uri=${encodeURIComponent(redirect_uri)}&response_type=code&scope=${encodeURIComponent(scopes.join(' '))}`;
-  res.redirect(authUrl);
-});
+  res.redirect(authUrl);  // --> /callback
+}
+
 
 // Handle the callback from Spotify
 app.get('/callback', async (req, res) => {
@@ -81,28 +84,19 @@ app.get('/callback', async (req, res) => {
     // Store token in global token variable
     token = response.data.access_token.trim();
     
-    /*
-    // Store the access token (overwrite old one if there is one)
-    fs.writeFile('.token', response.data.access_token, function (err) {
-      if (err) console.log("Error writing access token to file.");
-      else console.log("Successfully saved access token.");
-    });
-    */
-    
-    res.redirect(`/profile`);
+    res.redirect(`/main`);
   } catch (error) {
     console.error('Error fetching access token:', error.response ? error.response.data : error.message);
     res.status(500).send('Failed to fetch access token');
   }
 });
 
-// Fetch user profile
-app.get('/profile', async (req, res) => {
+// App main page
+app.get('/main', async (req, res) => {
     
-  //const token = await readTokenFromFile();
   if(!token) {
     console.log("Token not defined.");
-    //res.redirect("/login");
+    authorize(res);
     return;
   }
   // Get the profile from Spotify
@@ -122,22 +116,8 @@ app.get('/profile', async (req, res) => {
   }
   
 });
-  
-//Read token from file
-// NOTE: Commented this out for now and just using a global var for token
-/*async function readTokenFromFile() {
-  // Read access token from file
-  
-  try {
-    const data = await fs.readFile('.token', 'utf8');
-    return data.trim();
-  } catch (err) {
-    console.error("Error reading from token file:", err);
-    return null;
-  }
-  
-}*/
 
+/*
 //Get playback state
 app.get('/playback_state', async (req, res) => {
   //const token = await readTokenFromFile();
@@ -167,18 +147,18 @@ app.get('/playback_state', async (req, res) => {
   
 
 });
+*/
 
-
-//Get available devices
-app.get('/devices', async (req, res) => {
+//Get device list, and store the Pi device ID
+async function getPiDeviceId() {
   //const token = await readTokenFromFile();
   if(!token) {
     console.log("Token doesn't exist.");
-    //res.redirect("/login");
+    authorize();
     return;
   }
-  console.log("Token: " + token);
   
+  // Get list of devices from Spotify
   try {
     const response = await axios.get('https://api.spotify.com/v1/me/player/devices', {
       headers: {
@@ -187,33 +167,46 @@ app.get('/devices', async (req, res) => {
     });
     
     console.log("Response:" + JSON.stringify(response.data));
-    res.render(mainPage, data);
+    
+    // Find the Pi/librespot device id and store in global piDeviceId
+    response.data.devices.forEach(device => {
+      if (device.name === piDeviceName) {
+        piDeviceId = device.id;
+        console.log("Found pi device id: " + piDeviceId);
+      }
+    });
+    
+    // ***TO CODE: handle if pi device not found
+
 
   } catch (error) {
     console.error('Error getting playback state', error.response ? error.response.data : error.message);
     res.status(500).send('Failed to get playback state');
   }
   
-
-});
-
-
-// Transfer playback to librespot
+}
 
 
 // Start playback
 app.get('/play', async (req, res) => {
   if(!token) {
     console.log("Token doesn't exist.");
-    //res.redirect("/login");
+    authorize(res);
     return;
   }
   
+  // If we don't have the ID of the device, get it
+  if(!piDeviceId) {
+    await getPiDeviceId();
+  }
+  
+  // Transfer playback to Pi and play!
   try {
     const response = await axios.put(
-      'https://api.spotify.com/v1/me/player/play', 
+      'https://api.spotify.com/v1/me/player', 
       {
-        'position_ms': 0
+        'device_ids': [piDeviceId],
+        'play': true
       },
       {
         headers: {
@@ -221,8 +214,7 @@ app.get('/play', async (req, res) => {
         }
       }
     );
-    
-    console.log("Response:" + JSON.stringify(response.data));
+  
     res.render(mainPage, data);
 
   } catch (error) {
@@ -231,7 +223,42 @@ app.get('/play', async (req, res) => {
   }
 });
 
-// Stop playback
+
+// Pause playback
+app.get('/pause', async (req, res) => {
+  if(!token) {
+    console.log("Token doesn't exist.");
+    //res.redirect("/login");
+    return;
+  }
+  
+  // If we don't have the ID of the device, get it
+  if(!piDeviceId) {
+    await getPiDeviceId();
+  }
+  
+  // Send pause request to Spotify
+  try {
+    const response = await axios.put(
+      'https://api.spotify.com/v1/me/player/pause', 
+      {
+        'device_id': piDeviceId,
+      },
+      {
+        headers: {
+        'Authorization': `Bearer ${token}`
+        }
+      }
+    );
+    
+    res.render(mainPage, data);
+    
+  } catch (error) {
+    console.error('Error pausing playback', error.response ? error.response.data : error.message);
+    res.status(500).send('Failed to pausing playback');
+  }
+});
+
 
 // Set regular bell schedule
 app.get('/load_regular_schedule', async (req, res) => {
@@ -250,7 +277,3 @@ app.get('/load_regular_schedule', async (req, res) => {
   
 
 
-
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
-});
