@@ -4,6 +4,7 @@ const querystring = require('querystring');
 const fs = require('fs').promises;
 require('dotenv').config();
 const schedule = require('node-schedule');
+const { exec, spawn } = require('child_process');
 
 const app = express();
 const port = 8080;
@@ -11,11 +12,16 @@ const port = 8080;
 const client_id = process.env.CLIENT_ID;
 const client_secret = process.env.CLIENT_SECRET;
 const redirect_uri = process.env.REDIRECT_URI;
+const username = process.env.USERNAME;
+const pw = process.env.PASSWORD;
 
 const authEndpoint = 'https://accounts.spotify.com/authorize';
 const tokenEndpoint = 'https://accounts.spotify.com/api/token';
 const mainPage = 'pages/bellmusic';
 const piDeviceName = 'Librespot';
+const spotifyClientCommand = "librespot";
+const spotifyClientArgs = [`-n "${username}"`, `-p "${pw}"` ];
+var spotifyClientProcess = null;
 var piDeviceId = null;
 
 const scopes = [
@@ -53,7 +59,20 @@ app.listen(port, () => {
 });
 
 
-// Authorize Spotify
+// Handle server kill/exit (kill librespot process)
+function cleanup() {
+  if (spotifyClientProcess) {
+    spotifyClientProcess.kill();
+  }
+}
+
+process.on('SIGINT', () => { cleanup();  process.exit(0); });
+process.on('SIGTERM', () => { cleanup(); process.exit(0); });
+process.on('exit', () => { cleanup(); }); 
+//process.on('uncaughtException', () => { cleanup(); process.exit(1); });
+
+
+// Authorize Spotify (i.e. get authorization token)
 function authorize(res) {
   const authUrl = `${authEndpoint}?client_id=${client_id}&redirect_uri=${encodeURIComponent(redirect_uri)}&response_type=code&scope=${encodeURIComponent(scopes.join(' '))}`;
   res.redirect(authUrl);  // --> /callback
@@ -93,12 +112,42 @@ app.get('/callback', async (req, res) => {
 
 // App main page
 app.get('/main', async (req, res) => {
-    
+  
+  // If no authorization token yet  
   if(!token) {
     console.log("Token not defined.");
     authorize(res);
     return;
   }
+  /*
+  // If device not set up
+  if (!spotifyClientProcess) {
+    
+    //console.log("pw: " + pw);
+    // Start the device (librespot) on the pi
+    spotifyClientProcess = exec(`librespot -n "${username}"`, `-p "${pw}"`, (error, stdout, stderr) => {
+      console.log("librespot: " + stdout.toString());
+      console.log("librespot: " + error.toString());
+      console.log("librespot: " + stderr.toString());
+      console.log("OK");
+    });
+    // spotifyClientProcess = spawn(spotifyClientCommand, spotifyClientArgs);
+    /*
+    spotifyClientProcess.stdout.on('data', (data) => {
+      console.log(`${spotifyClientCommand}: `, data.toString());
+    });
+    
+    spotifyClientProcess.stderr.on('data', (data) => {
+      console.error(`${spotifyClientCommand}: `, data.toString());
+    });
+
+    
+    spotifyClientProcess.on('error', (error) => {
+      //***TO CODE: handle error from librespot
+    });
+    
+  }
+  */
   // Get the profile from Spotify
   try {
     const response = await axios.get('https://api.spotify.com/v1/me', {
@@ -117,6 +166,11 @@ app.get('/main', async (req, res) => {
   
 });
 
+
+// Start up Spotify client and connect to Spotify account so that device is active
+function startDevice() {
+  
+}
 /*
 //Get playback state
 app.get('/playback_state', async (req, res) => {
@@ -171,12 +225,14 @@ async function getPiDeviceId() {
     // Find the Pi/librespot device id and store in global piDeviceId
     response.data.devices.forEach(device => {
       if (device.name === piDeviceName) {
+        console.log("Found pi device id: " + device.id);
         piDeviceId = device.id;
-        console.log("Found pi device id: " + piDeviceId);
       }
     });
     
-    // ***TO CODE: handle if pi device not found
+    // Will only run if device not found
+    //console.log("Device not found.");
+    //return null;
 
 
   } catch (error) {
@@ -198,6 +254,7 @@ app.get('/play', async (req, res) => {
   // If we don't have the ID of the device, get it
   if(!piDeviceId) {
     await getPiDeviceId();
+    console.log("Device ID: " + piDeviceId);
   }
   
   // Transfer playback to Pi and play!
@@ -234,7 +291,7 @@ app.get('/pause', async (req, res) => {
   
   // If we don't have the ID of the device, get it
   if(!piDeviceId) {
-    await getPiDeviceId();
+    getPiDeviceId();
   }
   
   // Send pause request to Spotify
