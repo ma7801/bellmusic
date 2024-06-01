@@ -11,7 +11,7 @@ const port = 8080;
 
 const client_id = process.env.CLIENT_ID;
 const client_secret = process.env.CLIENT_SECRET;
-const redirect_uri = process.env.REDIRECT_URI;
+const redirect_uri =  "http://localhost:8080/callback"; //process.env.REDIRECT_URI;
 const username = process.env.USERNAME;
 const pw = process.env.PASSWORD;
 
@@ -64,6 +64,8 @@ function cleanup() {
   if (spotifyClientProcess) {
     spotifyClientProcess.kill();
   }
+
+  schedule.gracefulShutdown();
 }
 
 process.on('SIGINT', () => { cleanup();  process.exit(0); });
@@ -119,6 +121,12 @@ app.get('/main', async (req, res) => {
     authorize(res);
     return;
   }
+
+
+  var testjob = schedule.scheduleJob("*/1 * * * *", function() {
+    console.log("Testing");
+  });
+
   /*
   // If device not set up
   if (!spotifyClientProcess) {
@@ -332,5 +340,19 @@ app.get('/load_regular_schedule', async (req, res) => {
   data.current_bell_schedule = "Regular";
 });
   
+
+app.get('/load_assembly_schedule', async (req, res) => {
+  
+  _1and5Rule.hour = 8;
+  _1and5Rule.minute = 28;
+  _2and6Rule.hour = 9;
+  _2and6Rule.minute = 50;
+  _3and7Rule.hour = 11;
+  _3and7Rule.minute = 12;
+  _4and8Rule.hour = 13;
+  _4and8Rule.minute = 48;
+  
+  data.current_bell_schedule = "Assembly";
+});
 
 
