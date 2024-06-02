@@ -1,21 +1,28 @@
 TODO
-
-  Set Pi to have static IP during development so I can test on PC
-  . or hope that I get the same IP (.134) for now and deal with this when I don't.
-  Add code to change to librespot device
+  Finish scheduling code 
+    . play and pause don't seem to be getting called at time - not even
+      console.log outputs anything
+  Change current play and pause route functions so that they use
+    new play/pause functions
   Start/stop playback at certain time (single time for now!)
   Overall design of interface
        
   Need to have "refresh token" code execute if auth to spotify doesn't work
-  Don't forget to keep committing to git!
   Figure out a way to get Librespot device to show up in device list automatically; otherwise
-   I'd have to stream from my phone every time to get it to show up in device
-   list
+   I have to run librespot manually (with login credentials)
+   . might be easier to do with shell script rather than w/in node.js
 
 
 
-FEATURES
+FEATURES TO ADD
   Button(s) to choose assembly or regular schedule
+  
+  Keep track of songs played in playlist and don't play them again until
+    playlist is exhausted (maybe easiest way to do this is to download
+    playlist once, randomize list, and just loop through the list; would
+    need to handle situation where playlist is updated with new songs)
+    . or perhaps just a "if this song has been played in the last x songs,
+      skip to next, if that song has been played in the last x songs..."
   
 
 

@@ -11,7 +11,7 @@ const port = 8080;
 
 const client_id = process.env.CLIENT_ID;
 const client_secret = process.env.CLIENT_SECRET;
-const redirect_uri =  "http://localhost:8080/callback"; //process.env.REDIRECT_URI;
+const redirect_uri =  process.env.REDIRECT_URI;
 const username = process.env.USERNAME;
 const pw = process.env.PASSWORD;
 
@@ -31,27 +31,60 @@ const scopes = [
   'user-modify-playback-state'
 ];
 
-const mThruF = [new schedule.Range(1,5)];
-const _1and5Rule = new schedule.RecurrenceRule();
-const _2and6Rule = new schedule.RecurrenceRule();
-const _3and7Rule = new schedule.RecurrenceRule();
-const _4and8Rule = new schedule.RecurrenceRule();
-_1and5Rule.dayOfWeek = mThruF;
-_2and6Rule.dayOfWeek = mThruF;
-_3and7Rule.dayOfWeek = mThruF;
-_4and8Rule.dayOfWeek = mThruF;
+const weekdays = [new schedule.Range(1,5)];
 
-app.set('view engine', 'ejs');
+const playTimes = {
+  "regular" : [
+    { hour: 8, minute: 28 },
+    { hour: 10, minute: 1 },
+    { hour: 11, minute: 34 },
+    { hour: 13, minute: 39 }
+  ],
+  "assembly" : [
+    { hour: 8, minute: 28 },
+    { hour: 9, minute: 50 },
+    { hour: 11, minute: 12 },
+    { hour: 13, minute: 48 }  
+  ],
+  "debug" : [
+    { hour: 16, minute: 56 },
+    { hour: 16, minute: 58 }
+  ]
+};
 
-var token = null;
+const pauseTimes = {
+  "regular": [
+    { hour: 8, minute: 35 },
+    { hour: 10, minute: 8 },
+    { hour: 11, minute: 41 },
+    { hour: 13, minute: 46 }
+  ],
+  "assembly" : [
+    { hour: 8, minute: 35 },
+    { hour: 9, minute: 57 },
+    { hour: 11, minute: 19 },
+    { hour: 13, minute: 55 }  
+  ],
+  "debug" : [
+    { hour: 16, minute: 57 },
+    { hour: 16, minute: 59 }
+  ]
+};
+
+scheduledJobs = [];
+
+var token = null;  // Auth token used with Spotify API
+
+// Data used to display on main HTML page
 var data = {
   display_name: "[not logged in]",
   is_playing: false,
   device_name: "unknown",
   current_bell_schedule: "not set"
-  
-  };
+};
 
+// Set view engine for HTML template(s)
+app.set('view engine', 'ejs');
 
 // Create http server
 app.listen(port, () => {
@@ -59,19 +92,54 @@ app.listen(port, () => {
 });
 
 
-// Handle server kill/exit (kill librespot process)
-function cleanup() {
-  if (spotifyClientProcess) {
-    spotifyClientProcess.kill();
+// Create jobs for play and pause for "regular" or "assembly" schedule type
+function loadSchedule(type) {
+  
+  // Clear any currently scheduled jobs, if there are any
+  if (scheduledJobs.length > 0) {
+    cancelAllJobs();
   }
+  console.log("type:" + type);
+  console.log(JSON.stringify("playTimes: " + playTimes));
+  console.log(JSON.stringify("playTimes.type: " + playTimes[type]));
+  
+  playTimes[type].forEach(time => {
+    const playRule = new schedule.RecurrenceRule();
+    playRule.hour = time.hour;
+    playRule.minute = time.minute;
+    playRule.dayOfWeek = weekdays;
 
-  schedule.gracefulShutdown();
+    const job = schedule.scheduleJob(playRule, play);
+    
+    // Save job if it needs to be cancelled later
+    scheduledJobs.push(job);
+  });
+  
+  pauseTimes[type].forEach(time => {
+    const pauseRule = new schedule.RecurrenceRule();
+    pauseRule.hour = time.hour;
+    pauseRule.minute = time.minute;
+    pauseRule.dayOfWeek = weekdays;
+
+    const job = schedule.scheduleJob(pauseRule, pause);
+    
+    // Save job if it needs to be cancelled later
+    scheduledJobs.push(job);
+  });
 }
 
-process.on('SIGINT', () => { cleanup();  process.exit(0); });
-process.on('SIGTERM', () => { cleanup(); process.exit(0); });
-process.on('exit', () => { cleanup(); }); 
-//process.on('uncaughtException', () => { cleanup(); process.exit(1); });
+function cancelAllJobs() {
+  // If nothing to cancel, return
+  if (scheduledJobs.length === 0) return;
+  
+  // Cancel each job
+  scheduledJobs.forEach(job => {
+    job.cancel();
+  });
+  scheduledJobs.length = 0;  // Clear jobs the array
+  console.log('All scheduled tasks have been canceled.');
+}
+
 
 
 // Authorize Spotify (i.e. get authorization token)
@@ -122,10 +190,15 @@ app.get('/main', async (req, res) => {
     return;
   }
 
+  // Load the schedule
+  loadSchedule("debug");
+  
+  //loadSchedule("regular");
 
-  var testjob = schedule.scheduleJob("*/1 * * * *", function() {
-    console.log("Testing");
-  });
+  //var testjob = schedule.scheduleJob("*/1 * * * *", function() {
+  //  console.log("Testing");
+  //  startPlayback(res);
+  //});
 
   /*
   // If device not set up
@@ -175,48 +248,89 @@ app.get('/main', async (req, res) => {
 });
 
 
-// Start up Spotify client and connect to Spotify account so that device is active
-function startDevice() {
+async function play() {
   
-}
-/*
-//Get playback state
-app.get('/playback_state', async (req, res) => {
-  //const token = await readTokenFromFile();
+  console.log("Executing play()");
+  
   if(!token) {
-    console.log("Token doesn't exist.");
-    //res.redirect("/login");
+    console.log("play(): Token doesn't exist.");
+    //***TO CODE: Need to hand somehow without a response object
     return;
   }
-  console.log("Token: " + token);
   
-  try {
-    const response = await axios.get('https://api.spotify.com/v1/me/player', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    
-    //console.log("Response:" + JSON.stringify(response.data));
-    data.is_playing = response.data.is_playing;
-    data.device_name = response.data.device.name;
-    res.render(mainPage, data);
-
-  } catch (error) {
-    console.error('Error getting playback state', error.response ? error.response.data : error.message);
-    res.status(500).send('Failed to get playback state');
+  // If we don't have the ID of the device, get it
+  if(!piDeviceId) {
+    await getPiDeviceId();
+    console.log("Device ID: " + piDeviceId);
   }
   
+  // Transfer playback to Pi and play!
+  try {
+    const response = await axios.put(
+      'https://api.spotify.com/v1/me/player', 
+      {
+        'device_ids': [piDeviceId],
+        'play': true
+      },
+      {
+        headers: {
+        'Authorization': `Bearer ${token}`
+        }
+      }
+    );
 
-});
-*/
+  } catch (error) {
+    console.error('Error starting/resuming playback', error.response ? error.response.data : error.message);
+    res.status(500).send('Failed to start/resume playback');
+  }
+}
+
+async function pause() {
+  
+  console.log("Executing pause()");
+  
+  if(!token) {
+    console.log("pause(): Token doesn't exist.");
+    //***TO CODE: Need to hand somehow without a response object
+    return;
+  }
+  
+  // If we don't have the ID of the device, get it
+  if(!piDeviceId) {
+    getPiDeviceId();
+    console.log("Device ID: " + piDeviceId);
+  }
+  
+  // Send pause request to Spotify
+  try {
+    const response = await axios.put(
+      'https://api.spotify.com/v1/me/player/pause', 
+      {
+        'device_id': piDeviceId,
+      },
+      {
+        headers: {
+        'Authorization': `Bearer ${token}`
+        }
+      }
+    );
+    
+    res.render(mainPage, data);
+    
+  } catch (error) {
+    console.error('Error pausing playback', error.response ? error.response.data : error.message);
+    res.status(500).send('Failed to pausing playback');
+  }
+  
+}
+
 
 //Get device list, and store the Pi device ID
 async function getPiDeviceId() {
   //const token = await readTokenFromFile();
   if(!token) {
     console.log("Token doesn't exist.");
-    authorize();
+    authorize(res);
     return;
   }
   
@@ -245,11 +359,45 @@ async function getPiDeviceId() {
 
   } catch (error) {
     console.error('Error getting playback state', error.response ? error.response.data : error.message);
-    res.status(500).send('Failed to get playback state');
+    //res.status(500).send('Failed to get playback state');
   }
   
 }
 
+/*
+async function startPlayback(res) {
+  if(!token) {
+    console.log("Token doesn't exist.");
+    authorize(res);
+    return;
+  }
+  
+  // If we don't have the ID of the device, get it
+  if(!piDeviceId) {
+    await getPiDeviceId();
+    console.log("Device ID: " + piDeviceId);
+  }
+  
+  // Transfer playback to Pi and play!
+  try {
+    const response = await axios.put(
+      'https://api.spotify.com/v1/me/player', 
+      {
+        'device_ids': [piDeviceId],
+        'play': true
+      },
+      {
+        headers: {
+        'Authorization': `Bearer ${token}`
+        }
+      }
+    );
+
+  } catch (error) {
+    console.error('Error starting/resuming playback', error.response ? error.response.data : error.message);
+    res.status(500).send('Failed to start/resume playback');
+  }
+}
 
 // Start playback
 app.get('/play', async (req, res) => {
@@ -323,36 +471,47 @@ app.get('/pause', async (req, res) => {
     res.status(500).send('Failed to pausing playback');
   }
 });
+* 
+* */
+
+// Handle server kill/exit (kill librespot process)
+function cleanup() {
+  if (spotifyClientProcess) {
+    spotifyClientProcess.kill();
+  }
+  schedule.gracefulShutdown();
+}
+
+process.on('SIGINT', () => { cleanup();  process.exit(0); });
+process.on('SIGTERM', () => { cleanup(); process.exit(0); });
+process.on('exit', () => { cleanup(); }); 
+//process.on('uncaughtException', () => { cleanup(); process.exit(1); });
 
 
-// Set regular bell schedule
-app.get('/load_regular_schedule', async (req, res) => {
-  
-  _1and5Rule.hour = 8;
-  _1and5Rule.minute = 28;
-  _2and6Rule.hour = 10;
-  _2and6Rule.minute = 1;
-  _3and7Rule.hour = 11;
-  _3and7Rule.minute = 34;
-  _4and8Rule.hour = 13;
-  _4and8Rule.minute = 39;
-  
-  data.current_bell_schedule = "Regular";
-});
-  
 
-app.get('/load_assembly_schedule', async (req, res) => {
-  
-  _1and5Rule.hour = 8;
-  _1and5Rule.minute = 28;
-  _2and6Rule.hour = 9;
-  _2and6Rule.minute = 50;
-  _3and7Rule.hour = 11;
-  _3and7Rule.minute = 12;
-  _4and8Rule.hour = 13;
-  _4and8Rule.minute = 48;
-  
-  data.current_bell_schedule = "Assembly";
-});
-
-
+/*
+const regularPlayTimes = [
+  { hour: 8, minute: 28 },
+  { hour: 10, minute: 1 },
+  { hour: 11, minute: 34 },
+  { hour: 13, minute: 39 }
+];
+const regularPauseTimes = [
+  { hour: 8, minute: 35 },
+  { hour: 10, minute: 8 },
+  { hour: 11, minute: 41 },
+  { hour: 13, minute: 46 }
+];
+const assemblyPlayTimes = [
+  { hour: 8, minute: 28 },
+  { hour: 9, minute: 50 },
+  { hour: 11, minute: 12 },
+  { hour: 13, minute: 48 }
+];
+const assemblyPauseTimes = [
+  { hour: 8, minute: 35 },
+  { hour: 9, minute: 57 },
+  { hour: 11, minute: 19 },
+  { hour: 13, minute: 55 }
+];
+*/
