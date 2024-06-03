@@ -7,7 +7,7 @@ const schedule = require('node-schedule');
 const { exec, spawn } = require('child_process');
 
 const app = express();
-const port = 8080;
+const port = 3125;
 
 const client_id = process.env.CLIENT_ID;
 const client_secret = process.env.CLIENT_SECRET;
@@ -31,7 +31,8 @@ const scopes = [
   'user-modify-playback-state'
 ];
 
-const weekdays = [new schedule.Range(1,5)];
+//***NOTE: change 0,6 to 1,5 for production (actual weekdays)
+const weekdays = [new schedule.Range(0,6)];
 
 const playTimes = {
   "regular" : [
@@ -47,8 +48,8 @@ const playTimes = {
     { hour: 13, minute: 48 }  
   ],
   "debug" : [
-    { hour: 16, minute: 56 },
-    { hour: 16, minute: 58 }
+    { hour: 19, minute: 20 },
+    { hour: 19, minute: 22 }
   ]
 };
 
@@ -66,8 +67,8 @@ const pauseTimes = {
     { hour: 13, minute: 55 }  
   ],
   "debug" : [
-    { hour: 16, minute: 57 },
-    { hour: 16, minute: 59 }
+    { hour: 19, minute: 21 },
+    { hour: 19, minute: 23 }
   ]
 };
 
@@ -100,15 +101,16 @@ function loadSchedule(type) {
     cancelAllJobs();
   }
   console.log("type:" + type);
-  console.log(JSON.stringify("playTimes: " + playTimes));
-  console.log(JSON.stringify("playTimes.type: " + playTimes[type]));
-  
+  console.log("playTimes: " + JSON.stringify(playTimes));
+  console.log("playTimes.type: " + JSON.stringify(playTimes[type]));
+
   playTimes[type].forEach(time => {
     const playRule = new schedule.RecurrenceRule();
     playRule.hour = time.hour;
     playRule.minute = time.minute;
     playRule.dayOfWeek = weekdays;
 
+    console.log(`Scheduled play time at ${time.hour}:${time.minute} every weekday`);
     const job = schedule.scheduleJob(playRule, play);
     
     // Save job if it needs to be cancelled later
@@ -183,6 +185,8 @@ app.get('/callback', async (req, res) => {
 // App main page
 app.get('/main', async (req, res) => {
   
+  console.log("Loading main page");
+  
   // If no authorization token yet  
   if(!token) {
     console.log("Token not defined.");
@@ -190,10 +194,10 @@ app.get('/main', async (req, res) => {
     return;
   }
 
-  // Load the schedule
-  loadSchedule("debug");
+  // Load the schedule, if none loaded
+  //loadSchedule("debug");
   
-  //loadSchedule("regular");
+  if (scheduledJobs.length === 0) loadSchedule("regular");
 
   //var testjob = schedule.scheduleJob("*/1 * * * *", function() {
   //  console.log("Testing");
@@ -229,6 +233,7 @@ app.get('/main', async (req, res) => {
     
   }
   */
+  
   // Get the profile from Spotify
   try {
     const response = await axios.get('https://api.spotify.com/v1/me', {
@@ -247,6 +252,11 @@ app.get('/main', async (req, res) => {
   
 });
 
+
+// Route for play button/link
+app.get('/play', async (req, res) => {
+  play();
+});
 
 async function play() {
   
@@ -285,13 +295,20 @@ async function play() {
   }
 }
 
+
+// Route for pause button/link
+app.get('/pause', async (req, res) => {
+  pause();
+});
+
+
 async function pause() {
   
   console.log("Executing pause()");
   
   if(!token) {
     console.log("pause(): Token doesn't exist.");
-    //***TO CODE: Need to hand somehow without a response object
+    //***TO CODE: Need to handle somehow without a response object
     return;
   }
   
@@ -315,11 +332,9 @@ async function pause() {
       }
     );
     
-    res.render(mainPage, data);
-    
   } catch (error) {
     console.error('Error pausing playback', error.response ? error.response.data : error.message);
-    res.status(500).send('Failed to pausing playback');
+    res.status(500).send('Failed to pause playback');
   }
   
 }
@@ -364,116 +379,6 @@ async function getPiDeviceId() {
   
 }
 
-/*
-async function startPlayback(res) {
-  if(!token) {
-    console.log("Token doesn't exist.");
-    authorize(res);
-    return;
-  }
-  
-  // If we don't have the ID of the device, get it
-  if(!piDeviceId) {
-    await getPiDeviceId();
-    console.log("Device ID: " + piDeviceId);
-  }
-  
-  // Transfer playback to Pi and play!
-  try {
-    const response = await axios.put(
-      'https://api.spotify.com/v1/me/player', 
-      {
-        'device_ids': [piDeviceId],
-        'play': true
-      },
-      {
-        headers: {
-        'Authorization': `Bearer ${token}`
-        }
-      }
-    );
-
-  } catch (error) {
-    console.error('Error starting/resuming playback', error.response ? error.response.data : error.message);
-    res.status(500).send('Failed to start/resume playback');
-  }
-}
-
-// Start playback
-app.get('/play', async (req, res) => {
-  if(!token) {
-    console.log("Token doesn't exist.");
-    authorize(res);
-    return;
-  }
-  
-  // If we don't have the ID of the device, get it
-  if(!piDeviceId) {
-    await getPiDeviceId();
-    console.log("Device ID: " + piDeviceId);
-  }
-  
-  // Transfer playback to Pi and play!
-  try {
-    const response = await axios.put(
-      'https://api.spotify.com/v1/me/player', 
-      {
-        'device_ids': [piDeviceId],
-        'play': true
-      },
-      {
-        headers: {
-        'Authorization': `Bearer ${token}`
-        }
-      }
-    );
-  
-    res.render(mainPage, data);
-
-  } catch (error) {
-    console.error('Error starting/resuming playback', error.response ? error.response.data : error.message);
-    res.status(500).send('Failed to start/resume playback');
-  }
-});
-
-
-// Pause playback
-app.get('/pause', async (req, res) => {
-  if(!token) {
-    console.log("Token doesn't exist.");
-    //res.redirect("/login");
-    return;
-  }
-  
-  // If we don't have the ID of the device, get it
-  if(!piDeviceId) {
-    getPiDeviceId();
-  }
-  
-  // Send pause request to Spotify
-  try {
-    const response = await axios.put(
-      'https://api.spotify.com/v1/me/player/pause', 
-      {
-        'device_id': piDeviceId,
-      },
-      {
-        headers: {
-        'Authorization': `Bearer ${token}`
-        }
-      }
-    );
-    
-    res.render(mainPage, data);
-    
-  } catch (error) {
-    console.error('Error pausing playback', error.response ? error.response.data : error.message);
-    res.status(500).send('Failed to pausing playback');
-  }
-});
-* 
-* */
-
 // Handle server kill/exit (kill librespot process)
 function cleanup() {
   if (spotifyClientProcess) {
@@ -488,30 +393,3 @@ process.on('exit', () => { cleanup(); });
 //process.on('uncaughtException', () => { cleanup(); process.exit(1); });
 
 
-
-/*
-const regularPlayTimes = [
-  { hour: 8, minute: 28 },
-  { hour: 10, minute: 1 },
-  { hour: 11, minute: 34 },
-  { hour: 13, minute: 39 }
-];
-const regularPauseTimes = [
-  { hour: 8, minute: 35 },
-  { hour: 10, minute: 8 },
-  { hour: 11, minute: 41 },
-  { hour: 13, minute: 46 }
-];
-const assemblyPlayTimes = [
-  { hour: 8, minute: 28 },
-  { hour: 9, minute: 50 },
-  { hour: 11, minute: 12 },
-  { hour: 13, minute: 48 }
-];
-const assemblyPauseTimes = [
-  { hour: 8, minute: 35 },
-  { hour: 9, minute: 57 },
-  { hour: 11, minute: 19 },
-  { hour: 13, minute: 55 }
-];
-*/

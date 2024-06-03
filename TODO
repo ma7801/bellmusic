@@ -1,16 +1,16 @@
 TODO
-  Finish scheduling code 
-    . play and pause don't seem to be getting called at time - not even
-      console.log outputs anything
-  Change current play and pause route functions so that they use
-    new play/pause functions
-  Start/stop playback at certain time (single time for now!)
+  Have auth to Spotify run before main page even loads, that way
+    you don't need to load main page to have it work!
+  Way to have server run automatically on boot/login
+  Way to have librespot run automatically on boot/login
+  . maybe shell scripts for both of the above?
+  Add Assembly bell load button
+
   Overall design of interface
-       
-  Need to have "refresh token" code execute if auth to spotify doesn't work
-  Figure out a way to get Librespot device to show up in device list automatically; otherwise
-   I have to run librespot manually (with login credentials)
-   . might be easier to do with shell script rather than w/in node.js
+  Security - have pi go to lock screen
+  . make sure everything still works when locked
+
+      
 
 
 
@@ -28,4 +28,7 @@ FEATURES TO ADD
 
 MAYBE
   Some kind of indicator that shows it's connected to spotify?
+  Need to have "refresh token" code execute if auth to spotify doesn't work
+  . skipping this for now - just having page reload every 50 minutes
+    which reauthorizes it
   

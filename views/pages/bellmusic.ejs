@@ -1,11 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <body>
-<div><a href="main">Reauthorize</a><div>
-<div><a href="play">Play</a><div>
-<a href="pause">Pause</a>
-<h2>Logged in as <%= display_name %></h2>
-<h3>Schedule loaded: <%= current_bell_schedule %></h3>
+	<div><a href="main">Reauthorize</a><div>
+	<div><a href="play">Play</a></div>
+	<div><a href="pause">Pause</a></div>
+	<h2>Logged in as <%= display_name %></h2>
+	<h3>Schedule loaded: <%= current_bell_schedule %></h3>
+	
+	<!-- Script for auto-reloading -->
+	<script>
+		setTimeout(function() {
+			location.reload();
+		}, 3000000); // 50 minutes in milliseconds
+	</script>
+
 
 </body>
 </html>
