@@ -1,3 +1,5 @@
+const DEV = false;
+
 const express = require('express');
 const axios = require('axios');
 const querystring = require('querystring');
@@ -11,7 +13,7 @@ const port = 3125;
 
 const client_id = process.env.CLIENT_ID;
 const client_secret = process.env.CLIENT_SECRET;
-const redirect_uri =  process.env.REDIRECT_URI;
+const redirect_uri =  DEV ? process.env.REDIRECT_URI_DEV : process.env.REDIRECT_URI_PROD;
 const username = process.env.USERNAME;
 const pw = process.env.PASSWORD;
 
@@ -31,8 +33,8 @@ const scopes = [
   'user-modify-playback-state'
 ];
 
-//***NOTE: change 0,6 to 1,5 for production (actual weekdays)
-const weekdays = [new schedule.Range(0,6)];
+// Note: Range(0,6) allows dev testing on weekends :)
+const weekdays = DEV ? [new schedule.Range(0,6)] : [new schedule.Range(1,5)];
 
 const playTimes = {
   "regular" : [
@@ -75,6 +77,9 @@ const pauseTimes = {
 scheduledJobs = [];
 
 var token = null;  // Auth token used with Spotify API
+var refreshToken = null;   // Refresh token sent with orig. authorization
+var refreshTokenInterval = 25;  // minutes
+var isIntervalSet = false;  // Flag to indicate if setInterval for token refresh set, remove after code cleanup (see TODO)
 
 // Data used to display on main HTML page
 var data = {
@@ -174,6 +179,11 @@ app.get('/callback', async (req, res) => {
     
     // Store token in global token variable
     token = response.data.access_token.trim();
+    console.log("Received access token: " + token);
+    
+        // Store refresh token (used to refresh token later)
+    refreshToken = response.data.refresh_token.trim(); 
+    console.log("Received refresh token: " + refreshToken);
     
     res.redirect(`/main`);
   } catch (error) {
@@ -181,6 +191,32 @@ app.get('/callback', async (req, res) => {
     res.status(500).send('Failed to fetch access token');
   }
 });
+
+
+
+// Refresh auth token
+async function refreshAuthToken() {
+  try {
+    const authBuffer = Buffer.from(`${client_id}:${client_secret}`).toString('base64');
+    const response = await axios.post(tokenEndpoint, null, {
+      params: {
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken
+      },
+      headers: {
+        'Authorization': `Basic ${authBuffer}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
+
+    // Store the new token in global var
+    token = response.data.access_token.trim();   
+    console.log("New token after refresh: " + token);
+    
+  } catch (error) {
+    console.error('Error refreshing Spotify token:', error.response ? error.response.data : error.message);
+  }
+}
 
 // App main page
 app.get('/main', async (req, res) => {
@@ -196,8 +232,13 @@ app.get('/main', async (req, res) => {
 
   // Load the schedule, if none loaded
   //loadSchedule("debug");
-  
   if (scheduledJobs.length === 0) loadSchedule("regular");
+  
+  // Set/start the recurring timer to refresh the access token (if not set yet)
+  if (!isIntervalSet) {
+    setInterval(refreshAuthToken, refreshTokenInterval * 60 * 1000);
+    isIntervalSet = true;
+  }
 
   //var testjob = schedule.scheduleJob("*/1 * * * *", function() {
   //  console.log("Testing");
@@ -256,6 +297,7 @@ app.get('/main', async (req, res) => {
 // Route for play button/link
 app.get('/play', async (req, res) => {
   play();
+  res.redirect('/main');
 });
 
 async function play() {
@@ -291,7 +333,7 @@ async function play() {
 
   } catch (error) {
     console.error('Error starting/resuming playback', error.response ? error.response.data : error.message);
-    res.status(500).send('Failed to start/resume playback');
+    //res.status(500).send('Failed to start/resume playback');
   }
 }
 
@@ -299,6 +341,7 @@ async function play() {
 // Route for pause button/link
 app.get('/pause', async (req, res) => {
   pause();
+  res.redirect('/main');
 });
 
 
@@ -308,7 +351,6 @@ async function pause() {
   
   if(!token) {
     console.log("pause(): Token doesn't exist.");
-    //***TO CODE: Need to handle somehow without a response object
     return;
   }
   
@@ -334,7 +376,6 @@ async function pause() {
     
   } catch (error) {
     console.error('Error pausing playback', error.response ? error.response.data : error.message);
-    res.status(500).send('Failed to pause playback');
   }
   
 }
@@ -342,7 +383,7 @@ async function pause() {
 
 //Get device list, and store the Pi device ID
 async function getPiDeviceId() {
-  //const token = await readTokenFromFile();
+
   if(!token) {
     console.log("Token doesn't exist.");
     authorize(res);
