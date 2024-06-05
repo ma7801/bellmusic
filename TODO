@@ -1,4 +1,6 @@
 TODO
+  Bug, possibly with librespot, where device not found after a long
+    period of time
   Have auth to Spotify run before main page even loads, that way
     you don't need to load main page to have it work!
   Way to have server run automatically on boot/login
