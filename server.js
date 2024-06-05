@@ -1,4 +1,5 @@
 const DEV = false;
+const WINDOWS = true;
 
 const express = require('express');
 const axios = require('axios');
@@ -21,10 +22,11 @@ const authEndpoint = 'https://accounts.spotify.com/authorize';
 const tokenEndpoint = 'https://accounts.spotify.com/api/token';
 const mainPage = 'pages/bellmusic';
 const piDeviceName = 'Librespot';
+const winDeviceName = 'Web Player (Chrome)';
 const spotifyClientCommand = "librespot";
 const spotifyClientArgs = [`-n "${username}"`, `-p "${pw}"` ];
 var spotifyClientProcess = null;
-var piDeviceId = null;
+var deviceId = null;
 
 const scopes = [
   'user-read-private',
@@ -41,13 +43,15 @@ const playTimes = {
     { hour: 8, minute: 28 },
     { hour: 10, minute: 1 },
     { hour: 11, minute: 34 },
-    { hour: 13, minute: 39 }
+    { hour: 13, minute: 39 },
+    { hour: 15, minute: 10 }
   ],
   "assembly" : [
     { hour: 8, minute: 28 },
     { hour: 9, minute: 50 },
     { hour: 11, minute: 12 },
-    { hour: 13, minute: 48 }  
+    { hour: 13, minute: 48 },
+    { hour: 15, minute: 10 }  
   ],
   "debug" : [
     { hour: 19, minute: 20 },
@@ -60,13 +64,15 @@ const pauseTimes = {
     { hour: 8, minute: 35 },
     { hour: 10, minute: 8 },
     { hour: 11, minute: 41 },
-    { hour: 13, minute: 46 }
+    { hour: 13, minute: 46 },
+    { hour: 15, minute: 15 }
   ],
   "assembly" : [
     { hour: 8, minute: 35 },
     { hour: 9, minute: 57 },
     { hour: 11, minute: 19 },
-    { hour: 13, minute: 55 }  
+    { hour: 13, minute: 55 },
+    { hour: 15, minute: 15 }  
   ],
   "debug" : [
     { hour: 19, minute: 21 },
@@ -311,9 +317,9 @@ async function play() {
   }
   
   // If we don't have the ID of the device, get it
-  if(!piDeviceId) {
-    await getPiDeviceId();
-    console.log("Device ID: " + piDeviceId);
+  if(!deviceId) {
+    await getDeviceId();
+    console.log("Device ID: " + deviceId);
   }
   
   // Transfer playback to Pi and play!
@@ -321,7 +327,7 @@ async function play() {
     const response = await axios.put(
       'https://api.spotify.com/v1/me/player', 
       {
-        'device_ids': [piDeviceId],
+        'device_ids': [deviceId],
         'play': true
       },
       {
@@ -355,9 +361,9 @@ async function pause() {
   }
   
   // If we don't have the ID of the device, get it
-  if(!piDeviceId) {
-    getPiDeviceId();
-    console.log("Device ID: " + piDeviceId);
+  if(!deviceId) {
+    getDeviceId();
+    console.log("Device ID: " + deviceId);
   }
   
   // Send pause request to Spotify
@@ -365,7 +371,7 @@ async function pause() {
     const response = await axios.put(
       'https://api.spotify.com/v1/me/player/pause', 
       {
-        'device_id': piDeviceId,
+        'device_id': deviceId,
       },
       {
         headers: {
@@ -382,7 +388,7 @@ async function pause() {
 
 
 //Get device list, and store the Pi device ID
-async function getPiDeviceId() {
+async function getDeviceId() {
 
   if(!token) {
     console.log("Token doesn't exist.");
@@ -400,11 +406,17 @@ async function getPiDeviceId() {
     
     console.log("Response:" + JSON.stringify(response.data));
     
-    // Find the Pi/librespot device id and store in global piDeviceId
+    // Find the Pi/librespot device id and store in global deviceId
     response.data.devices.forEach(device => {
-      if (device.name === piDeviceName) {
+      // If running on Windows
+      if (WINDOWS && device.name === winDeviceName) {
         console.log("Found pi device id: " + device.id);
-        piDeviceId = device.id;
+        deviceId = device.id;  
+      }
+      
+      else if (device.name === piDeviceName) {
+        console.log("Found pi device id: " + device.id);
+        deviceId = device.id;
       }
     });
     
