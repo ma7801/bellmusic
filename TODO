@@ -1,12 +1,10 @@
 TODO
   Bug, possibly with librespot, where device not found after a long
     period of time
-  Have auth to Spotify run before main page even loads, that way
-    you don't need to load main page to have it work!
+
   Way to have server run automatically on boot/login
   Way to have librespot run automatically on boot/login
   . maybe shell scripts for both of the above?
-  Add Assembly bell load button
 
   Overall design of interface
   Security - have pi go to lock screen
@@ -17,7 +15,6 @@ TODO
 
 
 FEATURES TO ADD
-  Button(s) to choose assembly or regular schedule
   
   Keep track of songs played in playlist and don't play them again until
     playlist is exhausted (maybe easiest way to do this is to download
@@ -33,4 +30,5 @@ MAYBE
   Need to have "refresh token" code execute if auth to spotify doesn't work
   . skipping this for now - just having page reload every 50 minutes
     which reauthorizes it
-  
+    Have auth to Spotify run before main page even loads, that way
+    you don't need to load main page to have it work! (may not be possible since user may have to login to Spotify)  

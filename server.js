@@ -88,7 +88,7 @@ var refreshTokenInterval = 25;  // minutes
 var isIntervalSet = false;  // Flag to indicate if setInterval for token refresh set, remove after code cleanup (see TODO)
 
 // Data used to display on main HTML page
-var data = {
+var viewData = {
   display_name: "[not logged in]",
   is_playing: false,
   device_name: "unknown",
@@ -103,6 +103,16 @@ app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
 
+
+app.get('/loadAssembly', async (req, res) => {
+  loadSchedule("assembly");
+  res.redirect("/main");
+});
+
+app.get('/loadRegular', async (req, res) => {
+  loadSchedule("regular");
+  res.redirect("/main");
+});
 
 // Create jobs for play and pause for "regular" or "assembly" schedule type
 function loadSchedule(type) {
@@ -139,6 +149,10 @@ function loadSchedule(type) {
     // Save job if it needs to be cancelled later
     scheduledJobs.push(job);
   });
+
+  // Data for view
+  viewData.current_bell_schedule = type;
+
 }
 
 function cancelAllJobs() {
@@ -289,8 +303,8 @@ app.get('/main', async (req, res) => {
       }
     });
 
-    data.display_name = response.data.display_name;
-    res.render(mainPage, data);
+    viewData.display_name = response.data.display_name;
+    res.render(mainPage, viewData);
     //res.json(response.data); // User profile information
   } catch (error) {
     console.error('Error fetching profile:', error.response ? error.response.data : error.message);
@@ -410,12 +424,12 @@ async function getDeviceId() {
     response.data.devices.forEach(device => {
       // If running on Windows
       if (WINDOWS && device.name === winDeviceName) {
-        console.log("Found pi device id: " + device.id);
+        console.log("Found device id: " + device.id);
         deviceId = device.id;  
       }
       
       else if (device.name === piDeviceName) {
-        console.log("Found pi device id: " + device.id);
+        console.log("Found device id: " + device.id);
         deviceId = device.id;
       }
     });
