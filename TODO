@@ -1,10 +1,13 @@
 TODO
+  Working on having server, librespot, and browser open at startup
+  - bug right now: server can't read the .env file when run like this
+    - maybe have to do setup with "dotenv" package, or just do this another way
+      like read the file
+
   Bug, possibly with librespot, where device not found after a long
     period of time
 
-  Way to have server run automatically on boot/login
-  Way to have librespot run automatically on boot/login
-  . maybe shell scripts for both of the above?
+
 
   Overall design of interface
   Security - have pi go to lock screen

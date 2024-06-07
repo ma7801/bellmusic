@@ -1,5 +1,5 @@
-const DEV = false;
-const WINDOWS = true;
+const DEV = true;
+const WINDOWS = false;
 
 const express = require('express');
 const axios = require('axios');

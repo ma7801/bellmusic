@@ -1,0 +1,13 @@
+○ bellstartup.service - Bellmusic Startup
+     Loaded: loaded (/etc/systemd/system/bellstartup.service; enabled; preset: enabled)
+     Active: inactive (dead) since Thu 2024-06-06 20:56:24 PDT; 2min 10s ago
+   Duration: 10.025s
+    Process: 2739 ExecStart=/home/spotty/bellmusic/startup.sh (code=exited, status=0/SUCCESS)
+   Main PID: 2739 (code=exited, status=0/SUCCESS)
+        CPU: 3.830s
+
+Jun 06 20:56:14 spotifypi systemd[1]: Started bellstartup.service - Bellmusic Startup.
+Jun 06 20:56:14 spotifypi lxterminal[2741]: AT-SPI: Error retrieving accessibility bus address: org.freedesktop.DBus.Error.ServiceUnknown: The name org.a11y.Bus was not provided by any .service files
+Jun 06 20:56:14 spotifypi lxterminal[2742]: AT-SPI: Error retrieving accessibility bus address: org.freedesktop.DBus.Error.ServiceUnknown: The name org.a11y.Bus was not provided by any .service files
+Jun 06 20:56:24 spotifypi systemd[1]: bellstartup.service: Deactivated successfully.
+Jun 06 20:56:24 spotifypi systemd[1]: bellstartup.service: Consumed 3.830s CPU time.
