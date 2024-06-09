@@ -5,7 +5,7 @@ const express = require('express');
 const axios = require('axios');
 const querystring = require('querystring');
 const fs = require('fs').promises;
-require('dotenv').config({ path: '/home/spotty/bellmusic/.env' });
+require('dotenv').config();
 const schedule = require('node-schedule');
 const { exec, spawn } = require('child_process');
 
