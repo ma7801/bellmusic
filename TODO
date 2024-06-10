@@ -1,11 +1,9 @@
 TODO
-  Working on having server, librespot, and browser open at startup
-  - bug right now: server can't read the .env file when run like this
-    - maybe have to do setup with "dotenv" package, or just do this another way
-      like read the file
+
 
   Bug, possibly with librespot, where device not found after a long
     period of time
+  . error: getaddrerror EAI_AGAIN 
 
 
 

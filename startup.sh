@@ -9,7 +9,7 @@ source /home/spotty/.profile
 
 # Open terminal and run librespot
 echo "Opening terminal window and running librespot..." >> startup.sh.log
-lxterminal -e 'bash -c "librespot -u \"ma7801\" -p \"A5AprzD1gWQ2yoXqDTsP\" --B \"pulseaudio\""' &
+lxterminal -e 'bash -c "librespot -u \"ma7801\" -p \"A5AprzD1gWQ2yoXqDTsP\" --B \"pulseaudio\" -R 100"' &
 
 # Change working directory (server.js must run from bellmusic dir to work)
 echo "Changing directory to /home/spotty/bellmusic"
