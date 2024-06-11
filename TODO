@@ -1,5 +1,11 @@
 TODO
 
+  Dropdown with playlists
+  . Currently working on - just got playlists from Spotify, put into simplified array and printed to console
+
+  Code cleanup - split server.js into a few files, it's too long!
+  . would require better design with not as many global vars!
+  . (already started with "getPlaylists")
 
   Bug, possibly with librespot, where device not found after a long
     period of time
@@ -27,8 +33,16 @@ FEATURES TO ADD
 
 MAYBE
   Some kind of indicator that shows it's connected to spotify?
+
+
+
+
+
+
+DONE
   Need to have "refresh token" code execute if auth to spotify doesn't work
   . skipping this for now - just having page reload every 50 minutes
     which reauthorizes it
     Have auth to Spotify run before main page even loads, that way
     you don't need to load main page to have it work! (may not be possible since user may have to login to Spotify)  
+  (Lots of items I completed but deleted and probably shouldn't have here!)

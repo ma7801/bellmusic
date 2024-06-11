@@ -9,6 +9,9 @@ require('dotenv').config();
 const schedule = require('node-schedule');
 const { exec, spawn } = require('child_process');
 
+// My external files
+const getPlaylists = require('./getPlaylists');
+
 const app = express();
 const port = 3125;
 
@@ -25,9 +28,11 @@ const piDeviceName = 'Librespot';
 const winDeviceName = 'Web Player (Chrome)';
 const spotifyClientCommand = "librespot";
 const spotifyClientArgs = [`-n "${username}"`, `-p "${pw}"` ];
-const keepDeviceAliveInterval = 0.2;   // minutes
+const keepDeviceAliveInterval = 5;   // minutes
 var isKeepDeviceAliveIntervalSet = false;
 var isPlaying = false;
+
+var playlistsLoaded = false;
 
 var spotifyClientProcess = null;
 var deviceId = null;
@@ -41,7 +46,8 @@ const scopes = [
   'user-read-private',
   'user-read-email',
   'user-read-playback-state',
-  'user-modify-playback-state'
+  'user-modify-playback-state',
+  'playlist-read-private'
 ];
 
 // Note: Range(0,6) allows dev testing on weekends :)
@@ -96,7 +102,9 @@ scheduledJobs = [];
 var viewData = {
   display_name: "[not logged in]",
   device_name: "unknown",
-  current_bell_schedule: "not set"
+  current_bell_schedule: "not set",
+  current_playlist: "not set",
+  playlists: []
 };
 
 // Set view engine for HTML template(s)
@@ -321,6 +329,10 @@ app.get('/main', async (req, res) => {
     res.status(500).send('Failed to fetch profile');
   }
   
+  // TESTING
+  playlists = await getPlaylists(token);
+  console.log("Playlists: " + JSON.stringify(playlists));
+
 });
 
 
