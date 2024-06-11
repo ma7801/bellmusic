@@ -4,8 +4,7 @@ TODO
   Bug, possibly with librespot, where device not found after a long
     period of time
   . error: getaddrerror EAI_AGAIN 
-
-
+  . MAYBE fixed - need to do all-day test
 
   Overall design of interface
   Security - have pi go to lock screen

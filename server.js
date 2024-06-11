@@ -1,5 +1,5 @@
 const DEV = true;
-const WINDOWS = false;
+const WINDOWS = true;
 
 const express = require('express');
 const axios = require('axios');
@@ -25,8 +25,17 @@ const piDeviceName = 'Librespot';
 const winDeviceName = 'Web Player (Chrome)';
 const spotifyClientCommand = "librespot";
 const spotifyClientArgs = [`-n "${username}"`, `-p "${pw}"` ];
+const keepDeviceAliveInterval = 0.2;   // minutes
+var isKeepDeviceAliveIntervalSet = false;
+var isPlaying = false;
+
 var spotifyClientProcess = null;
 var deviceId = null;
+
+var token = null;  // Auth token used with Spotify API
+var refreshToken = null;   // Refresh token sent with orig. authorization
+var refreshTokenInterval = 25;  // minutes
+var isTokenIntervalSet = false;  // Flag to indicate if setInterval for token refresh set
 
 const scopes = [
   'user-read-private',
@@ -82,15 +91,10 @@ const pauseTimes = {
 
 scheduledJobs = [];
 
-var token = null;  // Auth token used with Spotify API
-var refreshToken = null;   // Refresh token sent with orig. authorization
-var refreshTokenInterval = 25;  // minutes
-var isIntervalSet = false;  // Flag to indicate if setInterval for token refresh set, remove after code cleanup (see TODO)
 
 // Data used to display on main HTML page
 var viewData = {
   display_name: "[not logged in]",
-  is_playing: false,
   device_name: "unknown",
   current_bell_schedule: "not set"
 };
@@ -255,9 +259,15 @@ app.get('/main', async (req, res) => {
   if (scheduledJobs.length === 0) loadSchedule("regular");
   
   // Set/start the recurring timer to refresh the access token (if not set yet)
-  if (!isIntervalSet) {
+  if (!isTokenIntervalSet) {
     setInterval(refreshAuthToken, refreshTokenInterval * 60 * 1000);
-    isIntervalSet = true;
+    isTokenIntervalSet = true;
+  }
+
+  // Set/start the keep device alive timer 
+  if (!isKeepDeviceAliveIntervalSet) {
+    setInterval(() => { play(true) }, keepDeviceAliveInterval * 60 * 1000);
+    isKeepDeviceAliveIntervalSet = true;
   }
 
   //var testjob = schedule.scheduleJob("*/1 * * * *", function() {
@@ -320,8 +330,15 @@ app.get('/play', async (req, res) => {
   res.redirect('/main');
 });
 
-async function play() {
-  
+async function play(keepAliveOnly = false) {
+  // Note: keepAliveOnly used mainly by keep alive interval timer; calls this function but sets "play" to false in API call, which 
+  //  keeps the device active without actually playing
+
+  // Don't attempt a keep-alive call if the device is already playing - that will pause it!
+  if (keepAliveOnly && isPlaying) {
+    return;
+  }
+
   console.log("Executing play()");
   
   if(!token) {
@@ -342,7 +359,7 @@ async function play() {
       'https://api.spotify.com/v1/me/player', 
       {
         'device_ids': [deviceId],
-        'play': true
+        'play': keepAliveOnly ? false : true
       },
       {
         headers: {
@@ -351,10 +368,15 @@ async function play() {
       }
     );
 
+    // Set the isPlaying flag, as long as this wasn't a "keep-alive" call
+    if (!keepAliveOnly) isPlaying = true;
+
   } catch (error) {
     console.error('Error starting/resuming playback', error.response ? error.response.data : error.message);
     //res.status(500).send('Failed to start/resume playback');
   }
+
+
 }
 
 
@@ -394,6 +416,8 @@ async function pause() {
       }
     );
     
+    // Turn off isPlaying flag
+    isPlaying = false;
   } catch (error) {
     console.error('Error pausing playback', error.response ? error.response.data : error.message);
   }
