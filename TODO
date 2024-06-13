@@ -1,7 +1,10 @@
 TODO
 
-  Dropdown with playlists
-  . Currently working on - just got playlists from Spotify, put into simplified array and printed to console
+  Set playlist
+  Make default playlist button
+  . stores id of playlist in a file on server, loaded on first call to main
+  Custom shuffle
+  . see possible logic below*
 
   Code cleanup - split server.js into a few files, it's too long!
   . would require better design with not as many global vars!
@@ -16,7 +19,11 @@ TODO
   Security - have pi go to lock screen
   . make sure everything still works when locked
 
-      
+
+*possible shuffle logic
+. load all playlist song ids into array and random sort array
+. keep last X (30?) played song ids in a file, FIFO
+. if next song is in those 30 last played, skip song (advance counter in array) 
 
 
 

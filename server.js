@@ -313,6 +313,12 @@ app.get('/main', async (req, res) => {
   }
   */
   
+  // Get user's playlists, if they aren't already loaded
+  if (!playlistsLoaded) {
+    viewData.playlists = await getPlaylists(token);
+    console.log("Playlists: " + JSON.stringify(viewData.playlists));
+    playlistsLoaded = true;
+  }
   // Get the profile from Spotify
   try {
     const response = await axios.get('https://api.spotify.com/v1/me', {
@@ -329,9 +335,7 @@ app.get('/main', async (req, res) => {
     res.status(500).send('Failed to fetch profile');
   }
   
-  // TESTING
-  playlists = await getPlaylists(token);
-  console.log("Playlists: " + JSON.stringify(playlists));
+
 
 });
 
@@ -391,6 +395,12 @@ async function play(keepAliveOnly = false) {
 
 }
 
+app.get('/setPlaylist', (req, res) => {
+  console.log("playlist rec'd: " + req.query.playlist);
+  res.redirect('/main');
+
+
+});
 
 // Route for pause button/link
 app.get('/pause', async (req, res) => {

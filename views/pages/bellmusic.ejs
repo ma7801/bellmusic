@@ -7,12 +7,24 @@
 	<div><a href="loadRegular">Load Regular Schedule</a></div>
 	<h2>Logged in as <%= display_name %></h2>
 	<h3>Schedule loaded: <%= current_bell_schedule %></h3>
+	Playlist: <select id="playlists">
+		<% playlists.forEach(playlist => { %>
+			<option value="<%= playlist.id %>"><%= playlist.name %></option>
+		<% }); %>
+	</select>
+	<button onclick="setPlaylist()">Set Playlist</button>
 	<div><a href="https://open.spotify.com/" target="_blank">Open Spotify Web Player</div>
 	<!-- Script for auto-reloading -->
 	<script>
+		// Refresh page every 50 minutes
 		setTimeout(function() {
 			location.reload();
 		}, 3000000); // 50 minutes in milliseconds
+
+		function setPlaylist() {
+			const playlist = document.getElementById('playlists').value;
+			window.location.href = `/setPlaylist?playlist=${encodeURIComponent(playlist)}`;
+		}
 	</script>
 
 
