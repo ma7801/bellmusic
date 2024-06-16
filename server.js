@@ -1,6 +1,3 @@
-const DEV = true;
-const WINDOWS = true;
-
 const express = require('express');
 const axios = require('axios');
 const querystring = require('querystring');
@@ -10,34 +7,40 @@ const schedule = require('node-schedule');
 const { exec, spawn } = require('child_process');
 
 // My external files
-const getPlaylists = require('./getPlaylists');
+const spotify = require('./spotify');
 
 const app = express();
 const port = 3125;
 
+var config = {
+  _DEV: true,
+  _WIN: true,
+  token: null,
+  isPlaying: false,
+  deviceId: null,
+  winDeviceName: 'Web Player (Chrome)',
+  piDeviceName: 'Librespot'
+};
+
 const client_id = process.env.CLIENT_ID;
 const client_secret = process.env.CLIENT_SECRET;
-const redirect_uri =  DEV ? process.env.REDIRECT_URI_DEV : process.env.REDIRECT_URI_PROD;
+const redirect_uri =  config._DEV ? process.env.REDIRECT_URI_DEV : process.env.REDIRECT_URI_PROD;
 const username = process.env.USERNAME;
 const pw = process.env.PASSWORD;
 
 const authEndpoint = 'https://accounts.spotify.com/authorize';
 const tokenEndpoint = 'https://accounts.spotify.com/api/token';
 const mainPage = 'pages/bellmusic';
-const piDeviceName = 'Librespot';
-const winDeviceName = 'Web Player (Chrome)';
 const spotifyClientCommand = "librespot";
 const spotifyClientArgs = [`-n "${username}"`, `-p "${pw}"` ];
 const keepDeviceAliveInterval = 5;   // minutes
 var isKeepDeviceAliveIntervalSet = false;
-var isPlaying = false;
 
 var playlistsLoaded = false;
+var curPlaylist;
 
 var spotifyClientProcess = null;
-var deviceId = null;
 
-var token = null;  // Auth token used with Spotify API
 var refreshToken = null;   // Refresh token sent with orig. authorization
 var refreshTokenInterval = 25;  // minutes
 var isTokenIntervalSet = false;  // Flag to indicate if setInterval for token refresh set
@@ -51,7 +54,7 @@ const scopes = [
 ];
 
 // Note: Range(0,6) allows dev testing on weekends :)
-const weekdays = DEV ? [new schedule.Range(0,6)] : [new schedule.Range(1,5)];
+const weekdays = config._DEV ? [new schedule.Range(0,6)] : [new schedule.Range(1,5)];
 
 const playTimes = {
   "regular" : [
@@ -144,7 +147,7 @@ function loadSchedule(type) {
     playRule.dayOfWeek = weekdays;
 
     console.log(`Scheduled play time at ${time.hour}:${time.minute} every weekday`);
-    const job = schedule.scheduleJob(playRule, play);
+    const job = schedule.scheduleJob(playRule, spotify.play);
     
     // Save job if it needs to be cancelled later
     scheduledJobs.push(job);
@@ -156,7 +159,7 @@ function loadSchedule(type) {
     pauseRule.minute = time.minute;
     pauseRule.dayOfWeek = weekdays;
 
-    const job = schedule.scheduleJob(pauseRule, pause);
+    const job = schedule.scheduleJob(pauseRule, spotify.pause);
     
     // Save job if it needs to be cancelled later
     scheduledJobs.push(job);
@@ -186,6 +189,7 @@ function authorize(res) {
   const authUrl = `${authEndpoint}?client_id=${client_id}&redirect_uri=${encodeURIComponent(redirect_uri)}&response_type=code&scope=${encodeURIComponent(scopes.join(' '))}`;
   res.redirect(authUrl);  // --> /callback
 }
+exports.authorize = authorize;
 
 
 // Handle the callback from Spotify
@@ -210,8 +214,8 @@ app.get('/callback', async (req, res) => {
     });
     
     // Store token in global token variable
-    token = response.data.access_token.trim();
-    console.log("Received access token: " + token);
+    config.token = response.data.access_token.trim();
+    console.log("Received access token: " + config.token);
     
         // Store refresh token (used to refresh token later)
     refreshToken = response.data.refresh_token.trim(); 
@@ -241,9 +245,9 @@ async function refreshAuthToken() {
       }
     });
 
-    // Store the new token in global var
-    token = response.data.access_token.trim();   
-    console.log("New token after refresh: " + token);
+    // Store the new token in config
+    config.token = response.data.access_token.trim();   
+    console.log("New token after refresh: " + config.token);
     
   } catch (error) {
     console.error('Error refreshing Spotify token:', error.response ? error.response.data : error.message);
@@ -256,7 +260,7 @@ app.get('/main', async (req, res) => {
   console.log("Loading main page");
   
   // If no authorization token yet  
-  if(!token) {
+  if(!config.token) {
     console.log("Token not defined.");
     authorize(res);
     return;
@@ -274,7 +278,7 @@ app.get('/main', async (req, res) => {
 
   // Set/start the keep device alive timer 
   if (!isKeepDeviceAliveIntervalSet) {
-    setInterval(() => { play(true) }, keepDeviceAliveInterval * 60 * 1000);
+    setInterval(() => { spotify.keepAlive(config) }, keepDeviceAliveInterval * 60 * 1000);
     isKeepDeviceAliveIntervalSet = true;
   }
 
@@ -315,7 +319,7 @@ app.get('/main', async (req, res) => {
   
   // Get user's playlists, if they aren't already loaded
   if (!playlistsLoaded) {
-    viewData.playlists = await getPlaylists(token);
+    viewData.playlists = await spotify.getPlaylists(config);
     console.log("Playlists: " + JSON.stringify(viewData.playlists));
     playlistsLoaded = true;
   }
@@ -323,7 +327,7 @@ app.get('/main', async (req, res) => {
   try {
     const response = await axios.get('https://api.spotify.com/v1/me', {
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${config.token}`
       }
     });
 
@@ -342,155 +346,23 @@ app.get('/main', async (req, res) => {
 
 // Route for play button/link
 app.get('/play', async (req, res) => {
-  play();
+  spotify.play(config);
   res.redirect('/main');
 });
-
-async function play(keepAliveOnly = false) {
-  // Note: keepAliveOnly used mainly by keep alive interval timer; calls this function but sets "play" to false in API call, which 
-  //  keeps the device active without actually playing
-
-  // Don't attempt a keep-alive call if the device is already playing - that will pause it!
-  if (keepAliveOnly && isPlaying) {
-    return;
-  }
-
-  console.log("Executing play()");
-  
-  if(!token) {
-    console.log("play(): Token doesn't exist.");
-    //***TO CODE: Need to hand somehow without a response object
-    return;
-  }
-  
-  // If we don't have the ID of the device, get it
-  if(!deviceId) {
-    await getDeviceId();
-    console.log("Device ID: " + deviceId);
-  }
-  
-  // Transfer playback to Pi and play!
-  try {
-    const response = await axios.put(
-      'https://api.spotify.com/v1/me/player', 
-      {
-        'device_ids': [deviceId],
-        'play': keepAliveOnly ? false : true
-      },
-      {
-        headers: {
-        'Authorization': `Bearer ${token}`
-        }
-      }
-    );
-
-    // Set the isPlaying flag, as long as this wasn't a "keep-alive" call
-    if (!keepAliveOnly) isPlaying = true;
-
-  } catch (error) {
-    console.error('Error starting/resuming playback', error.response ? error.response.data : error.message);
-    //res.status(500).send('Failed to start/resume playback');
-  }
-
-
-}
 
 app.get('/setPlaylist', (req, res) => {
-  console.log("playlist rec'd: " + req.query.playlist);
+  /* TO CODE */
+  console.log("setPlaylist: " + req.query.playlist);
   res.redirect('/main');
-
-
 });
+
 
 // Route for pause button/link
 app.get('/pause', async (req, res) => {
-  pause();
+  spotify.pause(config);
   res.redirect('/main');
 });
 
-
-async function pause() {
-  
-  console.log("Executing pause()");
-  
-  if(!token) {
-    console.log("pause(): Token doesn't exist.");
-    return;
-  }
-  
-  // If we don't have the ID of the device, get it
-  if(!deviceId) {
-    getDeviceId();
-    console.log("Device ID: " + deviceId);
-  }
-  
-  // Send pause request to Spotify
-  try {
-    const response = await axios.put(
-      'https://api.spotify.com/v1/me/player/pause', 
-      {
-        'device_id': deviceId,
-      },
-      {
-        headers: {
-        'Authorization': `Bearer ${token}`
-        }
-      }
-    );
-    
-    // Turn off isPlaying flag
-    isPlaying = false;
-  } catch (error) {
-    console.error('Error pausing playback', error.response ? error.response.data : error.message);
-  }
-  
-}
-
-
-//Get device list, and store the Pi device ID
-async function getDeviceId() {
-
-  if(!token) {
-    console.log("Token doesn't exist.");
-    authorize(res);
-    return;
-  }
-  
-  // Get list of devices from Spotify
-  try {
-    const response = await axios.get('https://api.spotify.com/v1/me/player/devices', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    
-    console.log("Response:" + JSON.stringify(response.data));
-    
-    // Find the Pi/librespot device id and store in global deviceId
-    response.data.devices.forEach(device => {
-      // If running on Windows
-      if (WINDOWS && device.name === winDeviceName) {
-        console.log("Found device id: " + device.id);
-        deviceId = device.id;  
-      }
-      
-      else if (device.name === piDeviceName) {
-        console.log("Found device id: " + device.id);
-        deviceId = device.id;
-      }
-    });
-    
-    // Will only run if device not found
-    //console.log("Device not found.");
-    //return null;
-
-
-  } catch (error) {
-    console.error('Error getting playback state', error.response ? error.response.data : error.message);
-    //res.status(500).send('Failed to get playback state');
-  }
-  
-}
 
 // Handle server kill/exit (kill librespot process)
 function cleanup() {

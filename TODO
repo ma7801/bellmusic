@@ -10,7 +10,7 @@ TODO
   . would require better design with not as many global vars!
   . (already started with "getPlaylists")
 
-  Bug, possibly with librespot, where device not found after a long
+  BUG possibly with librespot, where device not found after a long
     period of time
   . error: getaddrerror EAI_AGAIN 
   . MAYBE fixed - need to do all-day test
@@ -24,7 +24,12 @@ TODO
 . load all playlist song ids into array and random sort array
 . keep last X (30?) played song ids in a file, FIFO
 . if next song is in those 30 last played, skip song (advance counter in array) 
-
+6/13 - new logic:
+. keep last X (20-30) played song ids in a file, FIFO
+. look up next song in queue on Spotify, if on the recently played list from file, check next, etc (loop)
+. set "next skip amount" to how many songs need to be skipped in queue in order to get a song that isn't
+  on recently played list
+. [already made "skipMultiple" function and tested]
 
 
 FEATURES TO ADD
