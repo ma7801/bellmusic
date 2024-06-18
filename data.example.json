@@ -1,0 +1,13 @@
+{
+    "defaultPlaylistId": "IdOfDefaultPlaylist",
+    "tracks": [
+        {
+            "id": "idOfTrack1",
+            "hasPlayed": false
+        },
+        {
+            "id": "idOfTrack2",
+            "hasPlayed": false
+        }
+    ]
+}

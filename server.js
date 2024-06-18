@@ -1,13 +1,14 @@
 const express = require('express');
 const axios = require('axios');
 const querystring = require('querystring');
-const fs = require('fs').promises;
 require('dotenv').config();
 const schedule = require('node-schedule');
-const { exec, spawn } = require('child_process');
+//const { exec, spawn } = require('child_process');
 
 // My external files
 const spotify = require('./spotify');
+const Playlist = require('./Playlist');
+const playlist = new Playlist();
 
 const app = express();
 const port = 3125;
@@ -17,6 +18,7 @@ var config = {
   _WIN: true,
   token: null,
   isPlaying: false,
+  keepAliveOnly: false,
   deviceId: null,
   winDeviceName: 'Web Player (Chrome)',
   piDeviceName: 'Librespot'
@@ -25,14 +27,14 @@ var config = {
 const client_id = process.env.CLIENT_ID;
 const client_secret = process.env.CLIENT_SECRET;
 const redirect_uri =  config._DEV ? process.env.REDIRECT_URI_DEV : process.env.REDIRECT_URI_PROD;
-const username = process.env.USERNAME;
-const pw = process.env.PASSWORD;
+//const username = process.env.USERNAME;
+//const pw = process.env.PASSWORD;
 
 const authEndpoint = 'https://accounts.spotify.com/authorize';
 const tokenEndpoint = 'https://accounts.spotify.com/api/token';
 const mainPage = 'pages/bellmusic';
-const spotifyClientCommand = "librespot";
-const spotifyClientArgs = [`-n "${username}"`, `-p "${pw}"` ];
+//const spotifyClientCommand = "librespot";
+//const spotifyClientArgs = [`-n "${username}"`, `-p "${pw}"` ];
 const keepDeviceAliveInterval = 5;   // minutes
 var isKeepDeviceAliveIntervalSet = false;
 
@@ -50,7 +52,8 @@ const scopes = [
   'user-read-email',
   'user-read-playback-state',
   'user-modify-playback-state',
-  'playlist-read-private'
+  'playlist-read-private',
+  'streaming'
 ];
 
 // Note: Range(0,6) allows dev testing on weekends :)
@@ -277,10 +280,15 @@ app.get('/main', async (req, res) => {
   }
 
   // Set/start the keep device alive timer 
+  /*
   if (!isKeepDeviceAliveIntervalSet) {
     setInterval(() => { spotify.keepAlive(config) }, keepDeviceAliveInterval * 60 * 1000);
     isKeepDeviceAliveIntervalSet = true;
   }
+  */
+ 
+  // Initialize playlist data
+  //data.init();
 
   //var testjob = schedule.scheduleJob("*/1 * * * *", function() {
   //  console.log("Testing");
@@ -339,8 +347,15 @@ app.get('/main', async (req, res) => {
     res.status(500).send('Failed to fetch profile');
   }
   
+});
 
-
+// Secure API endpoint to provide access token to client
+app.get('/get-token', (req, res) => {
+  if (config.token) {
+    res.json({ token: config.token });
+  } else {
+    res.status(401).send('Not authenticated');
+  }
 });
 
 
@@ -351,8 +366,10 @@ app.get('/play', async (req, res) => {
 });
 
 app.get('/setPlaylist', (req, res) => {
-  /* TO CODE */
+  
   console.log("setPlaylist: " + req.query.playlist);
+  spotify.play(config, req.query.playlist);
+
   res.redirect('/main');
 });
 

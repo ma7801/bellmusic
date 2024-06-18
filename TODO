@@ -1,5 +1,15 @@
 TODO
 
+  6/16 - OK, well, the car is prett taken apart right now...
+  . I had ChatGPT create the code for "Playlist.js" - it is unedited and certainly untested
+  . I realized that I can't use the "multiple skip" logic because I won't know when to do the skipping...
+    the event of a track ending isn't sent to my server.  I'll have to handle oh shit....
+  . OK, REALIZED THE ABOVE WON'T WORK FOR THE SAME REASON!  GO BACK TO ORIGINAL LOGIC...I'LL
+    HAVE TO KEEP TRACK OF THE TIME OF THE SONG IN ORDER TO KNOW WHEN TO DO THE MULTIPLE SKIP
+     . OR START MY PROJECT OVER AND USE WEB SDK!  (PROBABLY START NEW PROJECT ENTIRELY, SEE IF IT WILL WORK)
+     . OR after chatting with ChatGPT, I think I will still be able to use my server-side code, but can just
+        do the event detection on the client side
+
   Set playlist
   Make default playlist button
   . stores id of playlist in a file on server, loaded on first call to main
@@ -20,16 +30,7 @@ TODO
   . make sure everything still works when locked
 
 
-*possible shuffle logic
-. load all playlist song ids into array and random sort array
-. keep last X (30?) played song ids in a file, FIFO
-. if next song is in those 30 last played, skip song (advance counter in array) 
-6/13 - new logic:
-. keep last X (20-30) played song ids in a file, FIFO
-. look up next song in queue on Spotify, if on the recently played list from file, check next, etc (loop)
-. set "next skip amount" to how many songs need to be skipped in queue in order to get a song that isn't
-  on recently played list
-. [already made "skipMultiple" function and tested]
+
 
 
 FEATURES TO ADD
@@ -58,3 +59,20 @@ DONE
     Have auth to Spotify run before main page even loads, that way
     you don't need to load main page to have it work! (may not be possible since user may have to login to Spotify)  
   (Lots of items I completed but deleted and probably shouldn't have here!)
+
+
+
+OLD: logic for custom shuffle
+NOTE: realized all of the below WON'T work because in order to skip, my script would need to
+ know the moment a song ended.  This isn't possible (unless I set a timer or something) because
+ there is no "event listening" possible via the Spotify Web API
+*possible shuffle logic
+. load all playlist song ids into array and random sort array
+. keep last X (30?) played song ids in a file, FIFO
+. if next song is in those 30 last played, skip song (advance counter in array) 
+6/13 - new logic:
+. keep last X (20-30) played song ids in a file, FIFO
+. look up next song in queue on Spotify, if on the recently played list from file, check next, etc (loop)
+. set "next skip amount" to how many songs need to be skipped in queue in order to get a song that isn't
+  on recently played list
+. [already made "skipMultiple" function and tested]

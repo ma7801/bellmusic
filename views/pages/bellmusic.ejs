@@ -1,7 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+<head>
+	<script src="https://sdk.scdn.co/spotify-player.js"></script>
+</head>
 <body>
 	<div><a href="play">Play</a></div>
+	<button onclick="togglePlayback()">Play/pause using SDK</button>
 	<div><a href="pause">Pause</a></div>
 	<div><a href="loadAssembly">Load Assembly Schedule</a></div>
 	<div><a href="loadRegular">Load Regular Schedule</a></div>
@@ -13,10 +17,57 @@
 		<% }); %>
 	</select>
 	<button onclick="setPlaylist()">Set Playlist</button>
-	<button onclick=""makeDefault()">Make Default</button>
+	<button onclick="makeDefault()">Make Default</button>
 	<div><a href="https://open.spotify.com/" target="_blank">Open Spotify Web Player</div>
 	<!-- Script for auto-reloading -->
 	<script>
+		
+		
+		var token = null;
+		var player = null;
+
+		// Initialize web player, including getting access token from my server
+		async function initializePlayer() {
+			try {
+				// Fetch the access token from the server
+				const response = await fetch('/get-token');
+				const data = await response.json();
+				token = data.token;
+
+				// Initialize the Spotify Web Playback SDK
+				player = new Spotify.Player({
+					name: 'SDK Web Player',
+					getOAuthToken: callback => { callback(token); }
+				});
+
+				// Connect to the player
+				await player.connect();
+
+				// Add event listeners
+				player.addListener('player_state_changed', state => {
+					console.log(state);
+				});
+
+				player.addListener('ready', ({ device_id }) => {
+					console.log('Ready with Device ID', device_id);
+				});
+
+				player.addListener('not_ready', ({ device_id }) => {
+					console.log('Device ID has gone offline', device_id);
+				});
+
+				
+			} catch (error) {
+				console.error('Error initializing Spotify player:', error);
+			}
+		}
+
+    	window.onSpotifyWebPlaybackSDKReady = initializePlayer;
+
+		console.log("Token: " + token);
+
+		
+
 		// Refresh page every 50 minutes
 		setTimeout(function() {
 			location.reload();
@@ -30,6 +81,14 @@
 			const playlist = document.getElementById('playlists').value;
 			window.location.href = `/makeDefault?playlist=${encodeURIComponent(playlist)}`;
 		}
+
+		function togglePlayback() {
+			player.togglePlay();
+		}
+		
+
+
+
 	</script>
 
 

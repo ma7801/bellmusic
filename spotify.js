@@ -41,8 +41,7 @@ async function getPlaylists(config) {
 
 
 async function play(config) {
-  // Note: keepAliveOnly used mainly by keep alive interval timer; calls this function but sets "play" to false in API call, which 
-  //  keeps the device active without actually playing
+  // Note: This uses the "Transfer Playback" endpoint in spotify API, not the "Start/Resume Playback" API endpoint
   // Don't attempt a keep-alive call if the device is already playing - that will pause it!
   if (config.keepAliveOnly && config.isPlaying) {
     console.log("play(): keepAliveOnly = isPlaying = true; returning...")
@@ -64,7 +63,7 @@ async function play(config) {
     console.log("Device ID: " + config.deviceId);
   }
 
-  // Transfer playback to Pi and play!
+  // Transfer playback to device and play!
   try {
     console.log("Now device id: " + config.deviceId);
 
@@ -130,35 +129,33 @@ async function pause(config) {
 
 }
 
-
-// Sets active device without playing - just to keep the device active
-async function keepAlive(config) {
-
-  console.log("Executing keepAlive()");
-
-  // Don't attempt a keep-alive call if the device is already playing - that will pause it!
-  if (config.isPlaying) {
-    console.log("keepAlive(): isPlaying = true; returning...")
-    return;
-  }
+/*
+async function changePlaylist(config, playlist_URI) {
 
   if (!config.token) {
-    console.log("keepAlive(): Token doesn't exist.");
+    console.log("changePlaylist(): Token doesn't exist.");
     return;
   }
 
-  // If we don't have the ID of the device, get it
-  if (!config.deviceId) {
-    config.deviceId = await getDeviceId(config);
+  
+  
+  // Create the request body
+  var body = ;
+
+  // Add the playlist URI to the request body if specified in argument
+  if(playlist_URI !== null) {
+    body.context_uri = playlist_URI;
+    body.offset = {};
+    body.offset.position = "0";
   }
 
-  // Set device as active (but don't play)
   try {
+    console.log("Now device id: " + config.deviceId);
+
     const response = await axios.put(
       'https://api.spotify.com/v1/me/player',
       {
-        'device_ids': [config.deviceId],
-        'play': false 
+        context_uri: playlist_URI
       },
       {
         headers: {
@@ -167,11 +164,16 @@ async function keepAlive(config) {
       }
     );
 
+    // Set the isPlaying flag, as long as this wasn't a "keep-alive" call
+    if (!config.keepAliveOnly) config.isPlaying = true;
+
   } catch (error) {
-    console.error('Error sending "keep alive" message: ', error.response ? error.response.data : error.message);
+    console.error('Error starting/resuming playback', error.response ? error.response.data : error.message);
+    //res.status(500).send('Failed to start/resume playback');
   }
 
 }
+*/
 
 
 // Helper function used by functions w/in this file; gets deviceId from Spotify
@@ -237,12 +239,17 @@ async function skip(config, numTracks = 1) {
   }
 }
 
+async function selectPlaylist(config, playlistId) {
+
+
+}
+
 module.exports = {
   getPlaylists,
   play,
   pause,
-  skip, 
-  keepAlive
+  skip 
+  //keepAlive
 }
 //Get device list, and store the Pi device ID
 
