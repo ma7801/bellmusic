@@ -1,5 +1,9 @@
 TODO
+  NEW NOTES (restarting this project 9-1-24):
+  . The Web SDK is not playing - this is the first thing to figure out!
 
+
+  OLD NOTES:
   6/16 - OK, well, the car is prett taken apart right now...
   . I had ChatGPT create the code for "Playlist.js" - it is unedited and certainly untested
   . I realized that I can't use the "multiple skip" logic because I won't know when to do the skipping...

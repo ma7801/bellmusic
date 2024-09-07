@@ -77,12 +77,14 @@
 			const playlist = document.getElementById('playlists').value;
 			window.location.href = `/setPlaylist?playlist=${encodeURIComponent(playlist)}`;
 		}
+		
 		function makeDefault() {
 			const playlist = document.getElementById('playlists').value;
 			window.location.href = `/makeDefault?playlist=${encodeURIComponent(playlist)}`;
 		}
 
 		function togglePlayback() {
+			console.log('Toggling playback.');
 			player.togglePlay();
 		}
 		
