@@ -4,8 +4,8 @@
 	<script src="https://sdk.scdn.co/spotify-player.js"></script>
 </head>
 <body>
-	<div><a href="play">Play</a></div>
-	<button onclick="togglePlayback()">Play/pause using SDK</button>
+	<div><button onclick="playFromServer()">Play from server</button></div>
+	<div><button onclick="togglePlayback()">Play/pause using SDK</button></div>
 	<div><a href="pause">Pause</a></div>
 	<div><a href="loadAssembly">Load Assembly Schedule</a></div>
 	<div><a href="loadRegular">Load Regular Schedule</a></div>
@@ -18,13 +18,15 @@
 	</select>
 	<button onclick="setPlaylist()">Set Playlist</button>
 	<button onclick="makeDefault()">Make Default</button>
-	<div><a href="https://open.spotify.com/" target="_blank">Open Spotify Web Player</div>
-	<!-- Script for auto-reloading -->
+	<div><a href="https://open.spotify.com/" target="_blank">Open Spotify Web Player</a></div>
+	<button onclick="showServerConfig()">Show Server Config</button>
+	<%= config %>
 	<script>
 		
 		
 		var token = null;
 		var player = null;
+		var deviceId = null;
 
 		// Initialize web player, including getting access token from my server
 		async function initializePlayer() {
@@ -45,11 +47,54 @@
 
 				// Add event listeners
 				player.addListener('player_state_changed', state => {
+					console.log("State changed:");
 					console.log(state);
 				});
 
 				player.addListener('ready', ({ device_id }) => {
 					console.log('Ready with Device ID', device_id);
+
+					// Store in global deviceId var
+					deviceId = device_id;
+					// Set the Web SDK Player as the active device
+					try {
+						fetch("https://api.spotify.com/v1/me/player", {
+							method: "PUT",
+							body: JSON.stringify({
+								device_ids: [device_id],
+								play: false
+							}),
+							headers: {
+								'Content-Type': 'application/json',
+								'Authorization': `Bearer ${token}`
+							}
+						}); 
+					} catch (error) {
+						console.error("Error setting active device on Spotify:", error);
+					}
+
+					// Set the Web SDK Player device ID on local server
+					try {
+						fetch("http://localhost:3125/setActiveDevice", {
+							method: "PUT",
+							body: JSON.stringify({ deviceId: deviceId}),
+							headers: {
+								'Content-Type': 'application/json'
+							}
+						}); 
+					} catch (error) {
+						console.error("Error setting active device on local server:", error);
+					}
+
+
+					/*
+					try {
+						window.location.href = `/setActiveDevice?deviceId=${encodeURIComponent(deviceId)}`;
+					} catch (error) {
+						console.error("Error setting active device ID on local server:", error);
+
+					}*/
+
 				});
 
 				player.addListener('not_ready', ({ device_id }) => {
@@ -84,8 +129,35 @@
 		}
 
 		function togglePlayback() {
-			console.log('Toggling playback.');
-			player.togglePlay();
+			//console.log('Toggling playback.');
+
+			try {
+				player.togglePlay().then(() => { console.log('Toggled playback.'); } )
+			} catch (error) {
+				console.error("Error toggline playback with SDK player:", error);
+			}
+
+		}
+
+		function showServerConfig() {
+			try {
+				window.location.href = '/showConfig';
+			} catch (error) {
+				console.error("Error fetching server config object:", error);
+			}
+		}
+
+		function playFromServer() {
+			try {
+				fetch("http://localhost:3125/play", {
+					method: "PUT",
+					headers: {
+						'Content-Type': 'application/json'
+					}
+				}); 
+			} catch (error) {
+				console.error("Error setting active device on local server:", error);
+			}
 		}
 		
 

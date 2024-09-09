@@ -3,11 +3,13 @@ const sleep = require("./sleep");
 
 /* Defines helper functions:
   getPlaylists(config) - returns users playlists as an array of objects: {'name': 'playlist_name', 'id': 'playlist_id'}
+  setActiveDevice(deviceId) - sets the current device by deviceId
   play(config) - start playback
   pause(config) - stop playback
   skip(config, numTracks = 1) - skip to next track in queue, or ahead in queue by numTracks
 
 */
+
 
 async function getPlaylists(config) {
     
@@ -40,6 +42,36 @@ async function getPlaylists(config) {
 }
 
 
+async function play(config) {
+
+  if (!config.token) {
+    console.log("play(): Token doesn't exist.");
+    return;
+  }
+
+  /*
+  // If we don't have the ID of the device, get it
+  if (!config.deviceId) {
+    config.deviceId = await getDeviceId(config);
+    console.log("Device ID: " + config.deviceId);
+  }
+  */
+
+  // Resume playback on Spotify (on active device which is default so no device ID supplied to Spotify)
+  try {
+    const response = await axios.put(
+      'https://api.spotify.com/v1/me/player/play?device_id=' + config.deviceId, {},
+       { headers: {'Authorization': `Bearer ${config.token}`}}
+    );
+
+    return response;
+  } catch (error) {
+    console.error('Error starting/resuming playback', error.response ? error.response.data : error.message);
+  }
+
+}
+
+/*
 async function play(config) {
   // Note: This uses the "Transfer Playback" endpoint in spotify API, not the "Start/Resume Playback" API endpoint
   // Don't attempt a keep-alive call if the device is already playing - that will pause it!
@@ -89,7 +121,7 @@ async function play(config) {
   }
 
 }
-
+*/
 
 
 async function pause(config) {

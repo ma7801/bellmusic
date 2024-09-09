@@ -1,7 +1,10 @@
 TODO
-  NEW NOTES (restarting this project 9-1-24):
-  . The Web SDK is not playing - this is the first thing to figure out!
+  NEW NOTES:
+  . Current problem is that new device ID generated every time main page reloads
+    . One way to minimize page reloads is to change HTTP "gets" to "puts" where I can (i.e. where no data needs to be grabbed from/changed on server for front end)
+      . Play is now working on server
 
+  NOTE: old implementation not working because there is a bug in librespot currently (bug report 7/29/24, still there 9/7/24)
 
   OLD NOTES:
   6/16 - OK, well, the car is prett taken apart right now...
@@ -38,7 +41,9 @@ TODO
 
 
 FEATURES TO ADD
-  
+  Playing at a scheduled time starts a new song, doesn't just pick up from last song played
+
+
   Keep track of songs played in playlist and don't play them again until
     playlist is exhausted (maybe easiest way to do this is to download
     playlist once, randomize list, and just loop through the list; would

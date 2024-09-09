@@ -20,8 +20,8 @@ var config = {
   isPlaying: false,
   keepAliveOnly: false,
   deviceId: null,
-  winDeviceName: 'Web Player (Chrome)',
-  piDeviceName: 'Librespot'
+  winDeviceName: 'SDK Web Player',
+  piDeviceName: 'SDK Web Player'
 };
 
 const client_id = process.env.CLIENT_ID;
@@ -110,11 +110,15 @@ var viewData = {
   device_name: "unknown",
   current_bell_schedule: "not set",
   current_playlist: "not set",
-  playlists: []
+  playlists: [], 
+  config: {}  // For debug purposes
 };
 
 // Set view engine for HTML template(s)
 app.set('view engine', 'ejs');
+
+// Lets JSON body requests be processed by express
+app.use(express.json());
 
 // Create http server
 app.listen(port, () => {
@@ -131,6 +135,21 @@ app.get('/loadRegular', async (req, res) => {
   loadSchedule("regular");
   res.redirect("/main");
 });
+
+// Debug - shows the config object on the web interfrace
+app.get('/showConfig', async (req, res) => {
+  viewData.config = JSON.stringify(config);
+  res.redirect("/main");
+});
+
+// Endpoint for updating device ID on server
+app.put('/setActiveDevice', (req, res) => {
+  config.deviceId = req.body.deviceId;
+});
+
+
+
+
 
 // Create jobs for play and pause for "regular" or "assembly" schedule type
 function loadSchedule(type) {
@@ -278,52 +297,6 @@ app.get('/main', async (req, res) => {
     setInterval(refreshAuthToken, refreshTokenInterval * 60 * 1000);
     isTokenIntervalSet = true;
   }
-
-  // Set/start the keep device alive timer 
-  /*
-  if (!isKeepDeviceAliveIntervalSet) {
-    setInterval(() => { spotify.keepAlive(config) }, keepDeviceAliveInterval * 60 * 1000);
-    isKeepDeviceAliveIntervalSet = true;
-  }
-  */
- 
-  // Initialize playlist data
-  //data.init();
-
-  //var testjob = schedule.scheduleJob("*/1 * * * *", function() {
-  //  console.log("Testing");
-  //  startPlayback(res);
-  //});
-
-  /*
-  // If device not set up
-  if (!spotifyClientProcess) {
-    
-    //console.log("pw: " + pw);
-    // Start the device (librespot) on the pi
-    spotifyClientProcess = exec(`librespot -n "${username}"`, `-p "${pw}"`, (error, stdout, stderr) => {
-      console.log("librespot: " + stdout.toString());
-      console.log("librespot: " + error.toString());
-      console.log("librespot: " + stderr.toString());
-      console.log("OK");
-    });
-    // spotifyClientProcess = spawn(spotifyClientCommand, spotifyClientArgs);
-    /*
-    spotifyClientProcess.stdout.on('data', (data) => {
-      console.log(`${spotifyClientCommand}: `, data.toString());
-    });
-    
-    spotifyClientProcess.stderr.on('data', (data) => {
-      console.error(`${spotifyClientCommand}: `, data.toString());
-    });
-
-    
-    spotifyClientProcess.on('error', (error) => {
-      //***TO CODE: handle error from librespot
-    });
-    
-  }
-  */
   
   // Get user's playlists, if they aren't already loaded
   if (!playlistsLoaded) {
@@ -359,17 +332,23 @@ app.get('/get-token', (req, res) => {
 });
 
 
-// Route for play button/link
-app.get('/play', async (req, res) => {
+app.put('/play', (req, res) => {
   spotify.play(config);
-  res.redirect('/main');
 });
 
+/*
+// Route for play button/link
+app.get('/play', async (req, res) => {
+  const resp = spotify.play(config);
+  console.log("Response from Spotify: " + JSON.stringify(resp));
+
+  res.redirect('/main');
+});
+*/
+
 app.get('/setPlaylist', (req, res) => {
-  
   console.log("setPlaylist: " + req.query.playlist);
   spotify.play(config, req.query.playlist);
-
   res.redirect('/main');
 });
 
