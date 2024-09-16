@@ -251,7 +251,6 @@ app.get('/callback', async (req, res) => {
 });
 
 
-
 // Refresh auth token
 async function refreshAuthToken() {
   try {
@@ -345,12 +344,6 @@ app.get('/play', async (req, res) => {
   res.redirect('/main');
 });
 */
-
-app.get('/setPlaylist', (req, res) => {
-  console.log("setPlaylist: " + req.query.playlist);
-  spotify.play(config, req.query.playlist);
-  res.redirect('/main');
-});
 
 
 // Route for pause button/link

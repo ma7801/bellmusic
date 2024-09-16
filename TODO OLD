@@ -1,0 +1,90 @@
+TODO
+  NEW NOTES:
+  . Current problem is that new device ID generated every time main page reloads
+    . One way to minimize page reloads is to change HTTP "gets" to "puts" where I can (i.e. where no data needs to be grabbed from/changed on server for front end)
+      . Play is now working on server, however it would still be best practice to change GETs to PUTs (and avoid window.location.href calls on client) - use fetch() instead
+
+  NOTE: old implementation not working because there is a bug in librespot currently (bug report 7/29/24, still there 9/7/24)
+
+  OLD NOTES:
+  6/16 - OK, well, the car is prett taken apart right now...
+  . I had ChatGPT create the code for "Playlist.js" - it is unedited and certainly untested
+  . I realized that I can't use the "multiple skip" logic because I won't know when to do the skipping...
+    the event of a track ending isn't sent to my server.  I'll have to handle oh shit....
+  . OK, REALIZED THE ABOVE WON'T WORK FOR THE SAME REASON!  GO BACK TO ORIGINAL LOGIC...I'LL
+    HAVE TO KEEP TRACK OF THE TIME OF THE SONG IN ORDER TO KNOW WHEN TO DO THE MULTIPLE SKIP
+     . OR START MY PROJECT OVER AND USE WEB SDK!  (PROBABLY START NEW PROJECT ENTIRELY, SEE IF IT WILL WORK)
+     . OR after chatting with ChatGPT, I think I will still be able to use my server-side code, but can just
+        do the event detection on the client side
+
+  Set playlist
+  Make default playlist button
+  . stores id of playlist in a file on server, loaded on first call to main
+  Custom shuffle
+  . see possible logic below*
+
+  Code cleanup - split server.js into a few files, it's too long!
+  . would require better design with not as many global vars!
+  . (already started with "getPlaylists")
+
+
+
+  Overall design of interface
+  Security - have pi go to lock screen
+  . make sure everything still works when locked
+
+
+
+
+
+FEATURES TO ADD
+  Playing at a scheduled time starts a new song, doesn't just pick up from last song played
+
+
+  Keep track of songs played in playlist and don't play them again until
+    playlist is exhausted (maybe easiest way to do this is to download
+    playlist once, randomize list, and just loop through the list; would
+    need to handle situation where playlist is updated with new songs)
+    . or perhaps just a "if this song has been played in the last x songs,
+      skip to next, if that song has been played in the last x songs..."
+  
+
+
+MAYBE
+  Some kind of indicator that shows it's connected to spotify?
+
+
+
+
+
+
+DONE
+  Need to have "refresh token" code execute if auth to spotify doesn't work
+  . skipping this for now - just having page reload every 50 minutes
+    which reauthorizes it
+    Have auth to Spotify run before main page even loads, that way
+    you don't need to load main page to have it work! (may not be possible since user may have to login to Spotify)  
+  (Lots of items I completed but deleted and probably shouldn't have here!)
+
+
+
+OLD: logic for custom shuffle
+NOTE: realized all of the below WON'T work because in order to skip, my script would need to
+ know the moment a song ended.  This isn't possible (unless I set a timer or something) because
+ there is no "event listening" possible via the Spotify Web API
+*possible shuffle logic
+. load all playlist song ids into array and random sort array
+. keep last X (30?) played song ids in a file, FIFO
+. if next song is in those 30 last played, skip song (advance counter in array) 
+6/13 - new logic:
+. keep last X (20-30) played song ids in a file, FIFO
+. look up next song in queue on Spotify, if on the recently played list from file, check next, etc (loop)
+. set "next skip amount" to how many songs need to be skipped in queue in order to get a song that isn't
+  on recently played list
+. [already made "skipMultiple" function and tested]
+
+
+  BUG possibly with librespot, where device not found after a long
+    period of time
+  . error: getaddrerror EAI_AGAIN 
+  . MAYBE fixed - need to do all-day test
